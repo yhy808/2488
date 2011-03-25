@@ -1,7 +1,7 @@
 Version 2002-08-30 contains modifications for variable time step method.
 Version 2011-02-02 makes all mod files threadsafe.  For cad.mod this 
 required replacing euler by cnexp, which changes spike times slightly
-but has no effect on quantitative results.
+but has no effect on qualitative results.
 
 This readme file gives usage instructions for patdemo2.zip (essentially
 patdemo.zip at http://www.cnl.salk.edu/~zach/methods.html by Z. F. Mainen
