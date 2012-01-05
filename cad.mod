@@ -34,7 +34,8 @@ Ruggero Scorcioni(rscorcio@gmu.edu) at EU Advance Course
 in Computational Neuroscience. Obidos, Portugal
 
 20110202 replaced METHOD euler with METHOD cnexp
-and made threadsafe by Ted Carnevale
+and made threadsafe by Ted Carnevale's suggestions
+20120105 replaced cnexp with derivimplicit - TMM
 ENDCOMMENT
 
 INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
@@ -80,7 +81,7 @@ ASSIGNED {
 	
 BREAKPOINT {
 :	SOLVE state METHOD euler
-	SOLVE state METHOD cnexp
+	SOLVE state METHOD derivimplicit
 }
 
 DERIVATIVE state { 

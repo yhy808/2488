@@ -16,7 +16,7 @@ Ruggero Scorcioni(rscorcio@gmu.edu) at EU Advance Course
 in Computational Neuroscience. Obidos, Portugal
 
 20110202 made threadsafe by Ted Carnevale
-
+20120105 SOLVE switched to derivimplicit from euler - TMM
 Special comment:
 
 This mechanism was designed to be run at a single operating 
@@ -107,7 +107,7 @@ INITIAL {
 }
 
 BREAKPOINT {
-        SOLVE states METHOD cnexp
+        SOLVE states METHOD derivimplicit
 	gk = tadj*gbar*n
 	ik = (1e-4) * gk * (v - ek)
 } 
