@@ -109,3 +109,5 @@ required replacing euler by cnexp, which changes spike times slightly
 but has no effect on qualitative results.
 Version 2012-01-05 derivimplicit was used in place of cnexp for kca and
 cad mechanisms (better for mechanisms with ion's)
+Version 2012-01-06 cnexp restored for kca.mod because linear in the
+state variables.

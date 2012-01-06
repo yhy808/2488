@@ -17,6 +17,7 @@ in Computational Neuroscience. Obidos, Portugal
 
 20110202 made threadsafe by Ted Carnevale
 20120105 SOLVE switched to derivimplicit from euler - TMM
+20120106 SOLVE switched back to cnexp because ode linear in n -TMM
 Special comment:
 
 This mechanism was designed to be run at a single operating 
@@ -107,7 +108,7 @@ INITIAL {
 }
 
 BREAKPOINT {
-        SOLVE states METHOD derivimplicit
+        SOLVE states METHOD cnexp
 	gk = tadj*gbar*n
 	ik = (1e-4) * gk * (v - ek)
 } 
@@ -136,14 +137,3 @@ PROCEDURE rates(cai(mM)) {
 :        tinc = -dt * tadj
 :        nexp = 1 - exp(tinc/ntau)
 }
-
-
-
-
-
-
-
-
-
-
-
