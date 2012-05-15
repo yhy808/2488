@@ -25,6 +25,8 @@ in Computational Neuroscience. Obidos, Portugal
 (thanks Ronald van Elburg!)
 
 20110202 made threadsafe by Ted Carnevale
+20120514 replaced vtrap0 with efun, which is a better approximation
+         in the vicinity of a singularity
 
 Special comment:
 
@@ -57,8 +59,6 @@ constants were originally determined) to tadj*gbar at the
 "operating temperature" celsius.
 ENDCOMMENT
 
-INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
-
 NEURON {
     THREADSAFE
 	SUFFIX na
@@ -69,6 +69,13 @@ NEURON {
 	GLOBAL Ra, Rb, Rd, Rg
 	GLOBAL q10, temp, tadj, vmin, vmax, vshift
 }
+
+UNITS {
+	(mA) = (milliamp)
+	(mV) = (millivolt)
+	(pS) = (picosiemens)
+	(um) = (micron)
+} 
 
 PARAMETER {
 	gbar = 1000   	(pS/um2)	: 0.12 mho/cm2
@@ -90,22 +97,14 @@ PARAMETER {
 	temp = 23	(degC)		: original temp 
 	q10  = 2.3			: temperature sensitivity
 
-	v 		(mV)
 :	dt		(ms)
-	celsius		(degC)
 	vmin = -120	(mV)
 	vmax = 100	(mV)
 }
 
-
-UNITS {
-	(mA) = (milliamp)
-	(mV) = (millivolt)
-	(pS) = (picosiemens)
-	(um) = (micron)
-} 
-
 ASSIGNED {
+	v 		(mV)
+	celsius		(degC)
 	ina 		(mA/cm2)
 	gna		(pS/um2)
 	ena		(mV)
@@ -114,11 +113,10 @@ ASSIGNED {
 	tadj
 }
  
-
 STATE { m h }
 
 INITIAL {
-    tadj = q10^((celsius - temp)/10) : make all threads calculate tadj at initialization
+    tadj = q10^((celsius - temp)/(10 (degC))) : make all threads calculate tadj at initialization
 
 	trates(v+vshift)
 	m = minf
@@ -131,7 +129,7 @@ BREAKPOINT {
 	ina = (1e-4) * gna * (v - ena)
 } 
 
-LOCAL mexp, hexp 
+: LOCAL mexp, hexp 
 
 DERIVATIVE states {   :Computes state variables m, h, and n 
         trates(v+vshift)      :             at the current v and dt.
@@ -139,13 +137,10 @@ DERIVATIVE states {   :Computes state variables m, h, and n
         h' =  (hinf-h)/htau
 }
 
-PROCEDURE trates(v) {  
-                      
-        
-        TABLE minf,  hinf, mtau, htau
-	DEPEND  celsius, temp, Ra, Rb, Rd, Rg, tha, thi1, thi2, qa, qi, qinf
-	
-	FROM vmin TO vmax WITH 199
+PROCEDURE trates(v (mV)) {  
+    TABLE minf,  hinf, mtau, htau
+    DEPEND celsius, temp, Ra, Rb, Rd, Rg, tha, thi1, thi2, qa, qi, qinf
+    FROM vmin TO vmax WITH 199
 
 	rates(v): not consistently executed from here if usetable == 1
 
@@ -156,26 +151,37 @@ PROCEDURE trates(v) {
 }
 
 
-PROCEDURE rates(vm) {  
-        LOCAL  a, b
+: efun() is a better approx than trap0 in vicinity of singularity--
 
-	a = trap0(vm,tha,Ra,qa)
-	b = trap0(-vm,-tha,Rb,qa)
+UNITSOFF
+PROCEDURE rates(vm (mV)) {  
+    LOCAL  a, b
 
-        tadj = q10^((celsius - temp)/10)
+:    a = trap0(vm,tha,Ra,qa)
+    a = Ra * qa * efun((tha - vm)/qa)
+
+:   b = trap0(-vm,-tha,Rb,qa)
+    b = Rb * qa * efun((vm - tha)/qa)
+
+    tadj = q10^((celsius - temp)/10)
 
 	mtau = 1/tadj/(a+b)
 	minf = a/(a+b)
 
-		:"h" inactivation 
+    :"h" inactivation 
 
-	a = trap0(vm,thi1,Rd,qi)
-	b = trap0(-vm,-thi2,Rg,qi)
-	htau = 1/tadj/(a+b)
-	hinf = 1/(1+exp((vm-thinf)/qinf))
+:    a = trap0(vm,thi1,Rd,qi)
+    a = Rd * qi * efun((thi1 - vm)/qi)
+
+:    b = trap0(-vm,-thi2,Rg,qi)
+    b = Rg * qi * efun((vm - thi2)/qi)
+
+    htau = 1/tadj/(a+b)
+    hinf = 1/(1+exp((vm-thinf)/qinf))
 }
+UNITSON
 
-
+COMMENT
 FUNCTION trap0(v,th,a,q) {
 	if (fabs((v-th)/q) > 1e-6) {
 	        trap0 = a * (v - th) / (1 - exp(-(v - th)/q))
@@ -183,3 +189,12 @@ FUNCTION trap0(v,th,a,q) {
 	        trap0 = a * q
  	}
 }	
+ENDCOMMENT
+
+FUNCTION efun(z) {
+	if (fabs(z) < 1e-6) {
+		efun = 1 - z/2
+	}else{
+		efun = z/(exp(z) - 1)
+	}
+}

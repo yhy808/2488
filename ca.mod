@@ -15,6 +15,7 @@ Ruggero Scorcioni(rscorcio@gmu.edu) at EU Advance Course
 in Computational Neuroscience. Obidos, Portugal
 
 20110202 made threadsafe by Ted Carnevale
+20120514 fixed singularity in PROCEDURE rates
 
 Special comment:
 
@@ -47,8 +48,6 @@ constants were originally determined) to tadj*gbar at the
 "operating temperature" celsius.
 ENDCOMMENT
 
-INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
-
 NEURON {
     THREADSAFE
 	SUFFIX ca
@@ -58,35 +57,31 @@ NEURON {
 	GLOBAL q10, temp, tadj, vmin, vmax, vshift
 }
 
-PARAMETER {
-	gbar = 0.1   	(pS/um2)	: 0.12 mho/cm2
-	vshift = 0	(mV)		: voltage shift (affects all)
-
-	cao  = 2.5	(mM)	        : external ca concentration
-	cai		(mM)
-						
-	temp = 23	(degC)		: original temp 
-	q10  = 2.3			: temperature sensitivity
-
-	v 		(mV)
-:	dt		(ms)
-	celsius		(degC)
-	vmin = -120	(mV)
-	vmax = 100	(mV)
-}
-
-
 UNITS {
 	(mA) = (milliamp)
 	(mV) = (millivolt)
 	(pS) = (picosiemens)
 	(um) = (micron)
+    (mM) = (milli/liter)
 	FARADAY = (faraday) (coulomb)
 	R = (k-mole) (joule/degC)
 	PI	= (pi) (1)
 } 
 
+PARAMETER {
+	gbar = 0.1   	(pS/um2)	: 0.12 mho/cm2
+	vshift = 0	(mV)		: voltage shift (affects all)
+	cao  = 2.5	(mM)	        : external ca concentration
+	cai		(mM)
+	temp = 23	(degC)		: original temp 
+	q10  = 2.3			: temperature sensitivity
+	vmin = -120	(mV)
+	vmax = 100	(mV)
+}
+
 ASSIGNED {
+	v 		(mV)
+	celsius		(degC)
 	ica 		(mA/cm2)
 	gca		(pS/um2)
 	eca		(mV)
@@ -95,11 +90,10 @@ ASSIGNED {
 	tadj
 }
  
-
 STATE { m h }
 
 INITIAL {
-    tadj = q10^((celsius - temp)/10) : make all threads calculate tadj at initialization
+    tadj = q10^((celsius - temp)/(10 (degC))) : make all threads calculate tadj at initialization
 
 	trates(v+vshift)
 	m = minf
@@ -107,12 +101,12 @@ INITIAL {
 }
 
 BREAKPOINT {
-        SOLVE states METHOD cnexp
-        gca = tadj*gbar*m*m*h
-	ica = (1e-4) * gca * (v - eca)
+    SOLVE states METHOD cnexp
+    gca = tadj*gbar*m*m*h
+    ica = (1e-4) * gca * (v - eca)
 } 
 
-LOCAL mexp, hexp
+: LOCAL mexp, hexp
 
 :PROCEDURE states() {
 :        trates(v+vshift)      
@@ -129,29 +123,31 @@ DERIVATIVE states {
         h' =  (hinf-h)/htau
 }
 
-PROCEDURE trates(v) {  
-                      
-        
-        TABLE minf, hinf, mtau, htau 
-	DEPEND  celsius, temp
-	
-	FROM vmin TO vmax WITH 199
+PROCEDURE trates(v (mV)) {  
+    TABLE minf, hinf, mtau, htau
+    DEPEND celsius, temp
+    FROM vmin TO vmax WITH 199
 
 	rates(v): not consistently executed from here if usetable == 1
 
 :        tinc = -dt * tadj
-
 :        mexp = 1 - exp(tinc/mtau)
 :        hexp = 1 - exp(tinc/htau)
 }
 
 
-PROCEDURE rates(vm) {  
+UNITSOFF
+PROCEDURE rates(vm (mV)) {  
         LOCAL  a, b
 
-        tadj = q10^((celsius - temp)/10)
+    tadj = q10^((celsius - temp)/(10 (degC)))
 
-	a = 0.055*(-27 - vm)/(exp((-27-vm)/3.8) - 1)
+:   a = 0.055*(-27 - vm)/(exp((-27-vm)/3.8) - 1)
+: singular at vm = -27
+:   a = 0.055*3.8*(-27 - vm)/3.8)/(exp((-27-vm)/3.8) - 1)
+: let z = (-27 - vm)/3.8
+:   a = 0.055*3.8*z/(exp(z) - 1)
+    a = 0.209*efun(-(27+vm)/3.8)
 	b = 0.94*exp((-75-vm)/17)
 	
 	mtau = 1/tadj/(a+b)
@@ -165,6 +161,7 @@ PROCEDURE rates(vm) {
 	htau = 1/tadj/(a+b)
 	hinf = a/(a+b)
 }
+UNITSON
 
 FUNCTION efun(z) {
 	if (fabs(z) < 1e-4) {

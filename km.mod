@@ -14,6 +14,7 @@ Ruggero Scorcioni(rscorcio@gmu.edu) at EU Advance Course
 in Computational Neuroscience. Obidos, Portugal
 
 20110202 made threadsafe by Ted Carnevale
+20120514 fixed singularity in PROCEDURE rates
 
 Special comment:
 
@@ -46,8 +47,6 @@ constants were originally determined) to tadj*gbar at the
 "operating temperature" celsius.
 ENDCOMMENT
 
-INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
-
 NEURON {
     THREADSAFE
 	SUFFIX km
@@ -67,7 +66,6 @@ UNITS {
 
 PARAMETER {
 	gbar = 10   	(pS/um2)	: 0.03 mho/cm2
-	v 		(mV)
 								
 	tha  = -30	(mV)		: v 1/2 for inf
 	qa   = 9	(mV)		: inf slope		
@@ -76,7 +74,6 @@ PARAMETER {
 	Rb   = 0.001	(/ms)		: max deact rate  (slow)
 
 :	dt		(ms)
-	celsius		(degC)
 	temp = 23	(degC)		: original temp 	
 	q10  = 2.3			: temperature sensitivity
 
@@ -86,6 +83,8 @@ PARAMETER {
 
 
 ASSIGNED {
+	v 		(mV)
+	celsius		(degC)
 	a		(/ms)
 	b		(/ms)
 	ik 		(mA/cm2)
@@ -100,7 +99,7 @@ ASSIGNED {
 STATE { n }
 
 INITIAL {
-    tadj = q10^((celsius - temp)/10) : make all threads calculate tadj at initialization
+    tadj = q10^((celsius - temp)/(10 (degC))) : make all threads calculate tadj at initialization
 
 	trates(v)
 	n = ninf
@@ -120,30 +119,44 @@ DERIVATIVE states {   :Computes state variable n
 
 }
 
-PROCEDURE trates(v) {  :Computes rate and other constants at current v.
+PROCEDURE trates(v (mV)) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
-        
-        TABLE ninf, ntau
-	DEPEND  celsius, temp, Ra, Rb, tha, qa
-	
-	FROM vmin TO vmax WITH 199
+    TABLE ninf, ntau
+    DEPEND celsius, temp, Ra, Rb, tha, qa
+    FROM vmin TO vmax WITH 199
 
 	rates(v): not consistently executed from here if usetable_hh == 1
-
 
 :        tinc = -dt * tadj
 :        nexp = 1 - exp(tinc/ntau)
 }
 
-
-PROCEDURE rates(v) {  :Computes rate and other constants at current v.
+UNITSOFF
+PROCEDURE rates(v (mV)) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-        a = Ra * (v - tha) / (1 - exp(-(v - tha)/qa))
-        b = -Rb * (v - tha) / (1 - exp((v - tha)/qa))
+    : singular when v = tha
+:    a = Ra * (v - tha) / (1 - exp(-(v - tha)/qa))
+:    a = Ra * qa*((v - tha)/qa) / (1 - exp(-(v - tha)/qa))
+:    a = Ra * qa*(-(v - tha)/qa) / (exp(-(v - tha)/qa) - 1)
+    a = Ra * qa * efun(-(v - tha)/qa)
+
+    : singular when v = tha
+:    b = -Rb * (v - tha) / (1 - exp((v - tha)/qa))
+:    b = -Rb * qa*((v - tha)/qa) / (1 - exp((v - tha)/qa))
+:    b = Rb * qa*((v - tha)/qa) / (exp((v - tha)/qa) - 1)
+    b = Rb * qa * efun((v - tha)/qa)
 
         tadj = q10^((celsius - temp)/10)
         ntau = 1/tadj/(a+b)
 	ninf = a/(a+b)
 }
+UNITSON
 
+FUNCTION efun(z) {
+	if (fabs(z) < 1e-4) {
+		efun = 1 - z/2
+	}else{
+		efun = z/(exp(z) - 1)
+	}
+}

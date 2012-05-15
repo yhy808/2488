@@ -111,3 +111,6 @@ Version 2012-01-05 derivimplicit was used in place of cnexp for kca and
 cad mechanisms (better for mechanisms with ion's)
 Version 2012-01-06 cnexp restored for kca.mod because linear in the
 state variables.
+Version 2012-05-15 updates from Ted Carnevale to make THREADSAFE,
+clean code, and handle singularities correctly (ca.mod, km.mod, and
+kv.mod didn't).
