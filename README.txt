@@ -114,3 +114,9 @@ state variables.
 Version 2012-05-15 updates from Ted Carnevale to make THREADSAFE,
 clean code, and handle singularities correctly (ca.mod, km.mod, and
 kv.mod didn't).
+Version 2016-02-15 update from Felix Z. Hoffmann to use Ted's method
+of calculating section area (lines 107-113 and 119 in demofig1.hoc) in
+general in case the method is extended to different cells than
+originally studied. See also
+https://github.com/Felix11H/mainen_sejnowski_1996_NEURON_Python for a
+python version of this model Felix developed.
